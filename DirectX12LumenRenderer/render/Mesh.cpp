@@ -7,7 +7,6 @@ bool Mesh::Initialize(ID3D12Device* device, const std::vector<Vertex>& vertices,
     const UINT vbSize = static_cast<UINT>(vertices.size() * sizeof(Vertex));
     const UINT ibSize = static_cast<UINT>(indices.size() * sizeof(uint32_t));
 
-    // VB
     CD3DX12_HEAP_PROPERTIES heapProps(D3D12_HEAP_TYPE_UPLOAD);
     CD3DX12_RESOURCE_DESC vbDesc = CD3DX12_RESOURCE_DESC::Buffer(vbSize);
     device->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE, &vbDesc,
@@ -22,7 +21,6 @@ bool Mesh::Initialize(ID3D12Device* device, const std::vector<Vertex>& vertices,
     m_vbView.StrideInBytes = sizeof(Vertex);
     m_vbView.SizeInBytes = vbSize;
 
-    // IB
     CD3DX12_RESOURCE_DESC ibDesc = CD3DX12_RESOURCE_DESC::Buffer(ibSize);
     device->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE, &ibDesc,
         D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&m_indexBuffer));
