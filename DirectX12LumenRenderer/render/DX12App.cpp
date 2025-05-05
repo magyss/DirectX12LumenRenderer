@@ -35,36 +35,26 @@ bool DX12App::InitDX12() {
 void DX12App::Render() {
     UINT frameIndex = m_swapChain->GetCurrentBackBufferIndex();
 
-    // Wait if GPU не закончил работу с текущим кадром
     m_frameResources->WaitForGPU(frameIndex);
-
-    // Начинаем запись команд
     m_frameResources->BeginFrame(frameIndex);
     auto* commandList = m_frameResources->GetCommandList();
 
-    // Переход ресурса в состояние "render target"
     D3D12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
         m_swapChain->GetCurrentRenderTarget(),
         D3D12_RESOURCE_STATE_PRESENT,
         D3D12_RESOURCE_STATE_RENDER_TARGET);
     commandList->ResourceBarrier(1, &barrier);
 
-    // Очистка RTV
-    FLOAT clearColor[] = { 0.1f, 0.1f, 0.5f, 1.0f }; // тёмно-синий
+    FLOAT clearColor[] = { 0.1f, 0.1f, 0.5f, 1.0f }; 
     D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = m_swapChain->GetCurrentRTV();
     commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
 
-    // Переход обратно в Present
     barrier = CD3DX12_RESOURCE_BARRIER::Transition(
         m_swapChain->GetCurrentRenderTarget(),
         D3D12_RESOURCE_STATE_RENDER_TARGET,
         D3D12_RESOURCE_STATE_PRESENT);
     commandList->ResourceBarrier(1, &barrier);
-
-    // Завершаем запись команд
     m_frameResources->EndFrame(m_deviceManager->GetCommandQueue(), frameIndex);
-
-    // Показываем буфер
     m_swapChain->Present();
 }
 
