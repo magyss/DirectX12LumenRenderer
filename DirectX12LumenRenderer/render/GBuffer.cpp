@@ -50,8 +50,6 @@ void GBuffer::CreateResources(ID3D12Device* device, UINT width, UINT height) {
             &clear,
             IID_PPV_ARGS(&m_renderTargets[i]));
     }
-
-    // Depth
     D3D12_RESOURCE_DESC depthDesc = CD3DX12_RESOURCE_DESC::Tex2D(
         DXGI_FORMAT_D32_FLOAT, width, height, 1, 1);
     depthDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
