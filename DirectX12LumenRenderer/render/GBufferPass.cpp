@@ -4,7 +4,6 @@
 #include <stdexcept>
 
 bool GBufferPass::Initialize(ID3D12Device* device, DXGI_FORMAT* rtFormats, UINT rtCount, DXGI_FORMAT depthFormat) {
-    // 1. Root Signature (пока пустая, без ресурсов)
     CD3DX12_ROOT_SIGNATURE_DESC rootDesc;
     rootDesc.Init(0, nullptr, 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
@@ -12,21 +11,16 @@ bool GBufferPass::Initialize(ID3D12Device* device, DXGI_FORMAT* rtFormats, UINT 
     Microsoft::WRL::ComPtr<ID3DBlob> error;
     D3D12SerializeRootSignature(&rootDesc, D3D_ROOT_SIGNATURE_VERSION_1, &sigBlob, &error);
     device->CreateRootSignature(0, sigBlob->GetBufferPointer(), sigBlob->GetBufferSize(), IID_PPV_ARGS(&m_rootSignature));
-
-    // 2. Compile Shaders
     Microsoft::WRL::ComPtr<ID3DBlob> vsBlob;
     Microsoft::WRL::ComPtr<ID3DBlob> psBlob;
     D3DCompileFromFile(L"shaders/gbuffer.hlsl", nullptr, nullptr, "VSMain", "vs_5_0", 0, 0, &vsBlob, nullptr);
     D3DCompileFromFile(L"shaders/gbuffer.hlsl", nullptr, nullptr, "PSMain", "ps_5_0", 0, 0, &psBlob, nullptr);
 
-    // 3. Input Layout
     D3D12_INPUT_ELEMENT_DESC layout[] = {
         { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,   D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
         { "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12,  D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
         { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,    0, 24,  D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
     };
-
-    // 4. PSO
     D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
     psoDesc.InputLayout = { layout, _countof(layout) };
     psoDesc.pRootSignature = m_rootSignature.Get();
@@ -51,8 +45,6 @@ bool GBufferPass::Initialize(ID3D12Device* device, DXGI_FORMAT* rtFormats, UINT 
 void GBufferPass::Render(ID3D12GraphicsCommandList* cmdList, GBuffer* gbuffer, const std::vector<Mesh*>& meshes) {
     cmdList->SetPipelineState(m_pipelineState.Get());
     cmdList->SetGraphicsRootSignature(m_rootSignature.Get());
-
-    // Установка RTV + DSV
     D3D12_CPU_DESCRIPTOR_HANDLE rtvs[3] = {
         gbuffer->GetRTV(0),
         gbuffer->GetRTV(1),
@@ -60,7 +52,6 @@ void GBufferPass::Render(ID3D12GraphicsCommandList* cmdList, GBuffer* gbuffer, c
     };
     cmdList->OMSetRenderTargets(3, rtvs, FALSE, &gbuffer->GetDSV());
 
-    // Очистка
     FLOAT clear0[] = { 0, 0, 0, 0 };
     cmdList->ClearRenderTargetView(rtvs[0], clear0, 0, nullptr);
     cmdList->ClearRenderTargetView(rtvs[1], clear0, 0, nullptr);
