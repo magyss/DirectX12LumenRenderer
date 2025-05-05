@@ -5,23 +5,19 @@ bool FrameResources::Initialize(ID3D12Device* device, UINT frameCount) {
     m_frameCount = frameCount;
     m_frames.resize(frameCount);
 
-    // Создание Command Allocators
     for (UINT i = 0; i < frameCount; ++i) {
         if (FAILED(device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_frames[i].commandAllocator)))) {
             return false;
         }
     }
 
-    // Командный лист создаётся один и переиспользуется с разными allocators
     if (FAILED(device->CreateCommandList(
         0, D3D12_COMMAND_LIST_TYPE_DIRECT,
         m_frames[0].commandAllocator.Get(),
         nullptr, IID_PPV_ARGS(&m_commandList)))) {
         return false;
     }
-    m_commandList->Close(); // Закрываем сразу, откроем вручную перед началом кадра
-
-    // Создаём fence
+    m_commandList->Close();
     if (FAILED(device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_fence)))) {
         return false;
     }
