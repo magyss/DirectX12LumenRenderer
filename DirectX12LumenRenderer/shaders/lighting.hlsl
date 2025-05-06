@@ -7,6 +7,52 @@ Texture2D GITexture : register(t3);
 Texture2D PrevGITexture : register(t4);
 
 
+Texture3D<float3> VoxelGI : register(t5);
+RWTexture2D<float3> GI_Cache : register(u0);
+Texture2D<float> Depth : register(t0);
+SamplerState samPoint : register(s0);
+
+cbuffer FrameParams : register(b0)
+{
+    float4x4 invProj;
+    float4x4 prevViewProj;
+    float4x4 currViewProj;
+    float2 screenSize;
+    float blendingFactor;
+};
+
+float3 ReconstructWorldPos(float2 uv, float depth)
+{
+    float4 clip = float4(uv * 2.0f - 1.0f, depth, 1.0f);
+    float4 view = mul(invProj, clip);
+    view /= view.w;
+    return view.xyz;
+}
+
+[numthreads(8, 8, 1)]
+void CSMain(uint3 id : SV_DispatchThreadID)
+{
+    float2 uv = id.xy / screenSize;
+    float depth = Depth.Sample(samPoint, uv);
+    float3 worldPos = ReconstructWorldPos(uv, depth);
+
+    float3 normal = ...; // из GBuffer
+    float3 gi = ConeTraceGI(worldPos, normal);
+
+    GI_Cache[id.xy] = gi;
+}
+
+float3 WorldToVoxelUV(float3 worldPos)
+{
+    return (worldPos - voxelGridOrigin) / (voxelSize * 128.0);
+}
+
+float3 SampleVoxelGI(float3 worldPos)
+{
+    float3 uvw = WorldToVoxelUV(worldPos);
+    return VoxelGI.SampleLevel(samLinear, uvw, 0);
+}
+
 struct VSOutput {
     float4 pos : SV_POSITION;
     float2 uv  : TEXCOORD;
@@ -66,6 +112,16 @@ VSOutput VSMain(uint vid : SV_VertexID) {
 }
 
 float4 PSMain(VSOutput input) : SV_Target {
+
+    for (int mip = 0; mip < maxMip - 1; ++mip)
+    {
+        cmdList->SetComputeRootDescriptorTable(0, uavMip[mip + 1]); 
+        cmdList->SetComputeRootDescriptorTable(1, srvMip[mip]);     
+
+        int size = 128 >> (mip + 1);
+        cmdList->Dispatch((size + 3) / 4, (size + 3) / 4, (size + 3) / 4);
+    }
+
 
     float3 curGI = GITexture.Sample(samLinear, input.uv).rgb;
     float3 prevGI = PrevGITexture.Sample(samLinear, input.uv).rgb;
@@ -128,6 +184,85 @@ float4 PSMain(VSOutput input) : SV_Target {
     giColor *= 0.3;
 
     float3 finalColor = directLight + giColor;
+
+
+    float3 bouncedGI = ConeTraceGI(worldPos, normal);
+    float3 finalColor = directLight + bouncedGI;
+
+
     return float4(finalColor, 1.0);
+}
+
+
+Texture3D<float3> VoxelMip[NUM_MIPS];
+
+float3 SampleVoxelCone(float3 origin, float3 dir, float coneAngle)
+{
+    float3 acc = 0;
+    float total = 0;
+
+    float t = 0.0;
+    const float step = voxelSize;
+    int numSteps = 16;
+
+    for (int i = 0; i < numSteps; ++i)
+    {
+        float3 pos = origin + dir * t;
+        float lod = log2(max(coneAngle * t / voxelSize, 1.0));
+
+        int mip = clamp((int)lod, 0, NUM_MIPS - 1);
+
+        float3 uvw = (pos - voxelGridOrigin) / (voxelSize * gridSize);
+        float3 sample = VoxelMip[mip].SampleLevel(samLinear, uvw, mip);
+
+        float w = 1.0 / (1.0 + i * 0.5);
+        acc += sample * w;
+        total += w;
+
+        t += step;
+    }
+
+    return acc / total;
+}
+
+
+
+float3 ConeTraceGI(float3 worldPos, float3 normal)
+{
+    const int NUM_CONES = 4;
+    float3 coneDirs[NUM_CONES] = {
+        normal,
+        normalize(reflect(normal, float3(0.8, 0.3, 0.1))),
+        normalize(reflect(normal, float3(-0.7, 0.2, -0.6))),
+        normalize(reflect(normal, float3(0.1, -0.9, 0.4)))
+    };
+
+    float coneAngle = 0.4; 
+    float3 gi = float3(0, 0, 0);
+
+    for (int c = 0; c < NUM_CONES; ++c)
+    {
+        float3 dir = coneDirs[c];
+        float3 pos = worldPos + 0.1 * dir;
+        float totalWeight = 0;
+        float3 coneGI = float3(0, 0, 0);
+
+        for (int i = 0; i < 16; ++i)
+        {
+            float radius = coneAngle * i * voxelSize; 
+            float3 uvw = (pos - voxelGridOrigin) / (voxelSize * 128.0);
+            float3 sample = VoxelGI.SampleLevel(samLinear, uvw, 0);
+
+            float weight = 1.0 / (1.0 + i * 0.2); 
+            coneGI += sample * weight;
+            totalWeight += weight;
+
+            pos += dir * voxelSize * 1.5; 
+        }
+
+        gi += coneGI / totalWeight;
+    }
+
+    return gi / NUM_CONES;
 }
 

@@ -3,7 +3,83 @@
 #include <d3dcompiler.h>
 #include <stdexcept>
 
+struct VoxelParams
+{
+    XMFLOAT3 voxelGridOrigin;
+    float voxelSize;
+};
+
+struct PixelInput
+{
+    float4 pos : SV_POSITION;
+    float2 uv : TEXCOORD0;
+    float3 worldPos : TEXCOORD1;
+    float3 normal : TEXCOORD2;
+    float3 viewDir : TEXCOORD3;
+};
+
+
 bool LightingPass::Initialize(ID3D12Device* device, DXGI_FORMAT backBufferFormat) {
+    FrameParams frame = {};
+    frame.invProj = XMMatrixInverse(nullptr, camera.GetProjectionMatrix());
+    frame.prevViewProj = prevViewProj;
+    frame.currViewProj = camera.GetViewProj();
+    frame.screenSize = { width, height };
+    frame.blendingFactor = 0.9f;
+
+    cmdList->SetComputeRoot32BitConstants(slot, sizeof(FrameParams)/4, &frame, 0);
+
+
+    SSRParams ssr = {};
+    ssr.screenSize = { (float)width, (float)height };
+    ssr.projMatrix = camera.GetProjectionMatrix();
+    ssr.invProjMatrix = camera.GetInvProjectionMatrix();
+    ssr.maxRayDist = 30.0f;
+
+    cmdList->SetGraphicsRoot32BitConstants(1, sizeof(SSRParams)/4, &ssr, 0);
+
+    cmdList->SetComputeRootDescriptorTable(0, m_voxelUAV); 
+    cmdList->SetComputeRootDescriptorTable(1, m_voxelSRV); 
+
+    cmdList->Dispatch(16, 16, 16);
+
+
+    VoxelParams params = {};
+    params.voxelGridOrigin = { -64.0f, -64.0f, -64.0f };
+    params.voxelSize = 1.0f;
+
+    cmdList->SetGraphicsRoot32BitConstants(slot, sizeof(VoxelParams) / 4, &params, 0);
+    D3D12_RESOURCE_DESC volumeDesc = {};
+    volumeDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE3D;
+    volumeDesc.Width = 128;
+    volumeDesc.Height = 128;
+    volumeDesc.DepthOrArraySize = 128;
+    volumeDesc.MipLevels = 1;
+    volumeDesc.Format = DXGI_FORMAT_R11G11B10_FLOAT;
+    volumeDesc.SampleDesc.Count = 1;
+    volumeDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+
+    device->CreateCommittedResource(
+    &heapProps, D3D12_HEAP_FLAG_NONE, &volumeDesc,
+    D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+    nullptr, IID_PPV_ARGS(&m_voxelGrid));
+
+    m_voxelUAV = descriptorHeap.AllocUAV();
+    D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+    uavDesc.Format = volumeDesc.Format;
+    uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE3D;
+    uavDesc.Texture3D.WSize = 128;
+    device->CreateUnorderedAccessView(m_voxelGrid.Get(), nullptr, &uavDesc, m_voxelUAV);
+
+    m_voxelSRV = descriptorHeap.AllocSRV();
+    D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+    srvDesc.Format = volumeDesc.Format;
+    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE3D;
+    srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+    srvDesc.Texture3D.MipLevels = 1;
+    device->CreateShaderResourceView(m_voxelGrid.Get(), &srvDesc, m_voxelSRV);
+
+
     CD3DX12_DESCRIPTOR_RANGE srvTable;
     srvTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 5, 0); // t0-t4
 

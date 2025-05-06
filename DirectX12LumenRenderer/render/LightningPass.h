@@ -14,6 +14,9 @@ class LightingPass {
     private:
         Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature;
         Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pipelineState;
+        Microsoft::WRL::ComPtr<ID3D12Resource> m_voxelGrid;
+        D3D12_GPU_DESCRIPTOR_HANDLE m_voxelUAV;
+        D3D12_GPU_DESCRIPTOR_HANDLE m_voxelSRV;
     
         Microsoft::WRL::ComPtr<ID3D12Resource> m_lightCB;
         Microsoft::WRL::ComPtr<ID3D12Resource> m_cameraCB;
