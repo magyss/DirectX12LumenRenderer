@@ -91,6 +91,29 @@ void GBuffer::CreateDescriptors(ID3D12Device* device) {
     device->CreateDepthStencilView(m_depthBuffer.Get(), nullptr, m_dsvHeap->GetCPUDescriptorHandleForHeapStart());
 }
 
+void GBuffer::CreateSRVs(ID3D12Device* device) {
+    D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
+    heapDesc.NumDescriptors = kNumRenderTargets;
+    heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+    heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+    device->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&m_srvHeap));
+
+    UINT descriptorSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+    D3D12_CPU_DESCRIPTOR_HANDLE handle = m_srvHeap->GetCPUDescriptorHandleForHeapStart();
+
+    for (int i = 0; i < kNumRenderTargets; ++i) {
+        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+        srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+        srvDesc.Format = m_renderTargets[i]->GetDesc().Format;
+        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+        srvDesc.Texture2D.MipLevels = 1;
+
+        device->CreateShaderResourceView(m_renderTargets[i].Get(), &srvDesc, handle);
+        handle.ptr += descriptorSize;
+    }
+}
+
+
 const std::vector<ID3D12Resource*>& GBuffer::GetRenderTargets() const {
     return m_renderTargets;
 }

@@ -5,6 +5,8 @@
 #include <vector>
 #include <DirectXMath.h>
 
+DirectX::XMMATRIX WorldMatrix = DirectX::XMMatrixIdentity();
+
 struct Vertex {
     DirectX::XMFLOAT3 position;
     DirectX::XMFLOAT3 normal;
@@ -12,15 +14,14 @@ struct Vertex {
 };
 
 class Mesh {
-public:
-    bool Initialize(ID3D12Device* device, const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices);
-    void Draw(ID3D12GraphicsCommandList* cmdList) const;
-
-private:
-    Microsoft::WRL::ComPtr<ID3D12Resource> m_vertexBuffer;
-    Microsoft::WRL::ComPtr<ID3D12Resource> m_indexBuffer;
-
-    D3D12_VERTEX_BUFFER_VIEW m_vbView = {};
-    D3D12_INDEX_BUFFER_VIEW m_ibView = {};
-    UINT m_indexCount = 0;
-};
+    public:
+        bool Initialize(...);
+        void Draw(ID3D12GraphicsCommandList* cmdList) const;
+    
+        void SetWorldMatrix(const DirectX::XMMATRIX& world) { m_world = world; }
+        const DirectX::XMMATRIX& GetWorldMatrix() const { return m_world; }
+    
+    private:
+        ...
+        DirectX::XMMATRIX m_world = DirectX::XMMatrixIdentity();
+    };

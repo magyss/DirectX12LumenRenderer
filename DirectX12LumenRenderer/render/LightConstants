@@ -1,0 +1,10 @@
+#pragma once
+#include <DirectXMath.h>
+
+struct LightConstants {
+    DirectX::XMFLOAT3 Position;
+    float Intensity;
+
+    DirectX::XMFLOAT3 Color;
+    float Padding; // выравнивание до 16 байт
+};

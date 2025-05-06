@@ -2,8 +2,16 @@
 #include <d3dx12.h>
 #include <d3dcompiler.h>
 #include <stdexcept>
+#include "CameraConstants.h"
+
 
 bool GBufferPass::Initialize(ID3D12Device* device, DXGI_FORMAT* rtFormats, UINT rtCount, DXGI_FORMAT depthFormat) {
+    CD3DX12_ROOT_PARAMETER rootParams[1];
+    rootParams[0].InitAsConstantBufferView(0);
+    
+    CD3DX12_ROOT_SIGNATURE_DESC rootDesc;
+    rootDesc.Init(_countof(rootParams), rootParams, 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+    
     CD3DX12_ROOT_SIGNATURE_DESC rootDesc;
     rootDesc.Init(0, nullptr, 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
@@ -43,6 +51,28 @@ bool GBufferPass::Initialize(ID3D12Device* device, DXGI_FORMAT* rtFormats, UINT 
 }
 
 void GBufferPass::Render(ID3D12GraphicsCommandList* cmdList, GBuffer* gbuffer, const std::vector<Mesh*>& meshes) {
+    for (auto* mesh : meshes) {
+        CameraConstants camData;
+        camData.World = DirectX::XMMatrixTranspose(mesh->GetWorldMatrix());
+        camData.View = DirectX::XMMatrixTranspose(camera->GetView());
+        camData.Proj = DirectX::XMMatrixTranspose(camera->GetProj());
+    
+        Microsoft::WRL::ComPtr<ID3D12Resource> cbResource;
+    
+        CD3DX12_HEAP_PROPERTIES heapProps(D3D12_HEAP_TYPE_UPLOAD);
+        CD3DX12_RESOURCE_DESC bufDesc = CD3DX12_RESOURCE_DESC::Buffer(sizeof(CameraConstants));
+        device->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE, &bufDesc,
+            D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&cbResource));
+    
+        CameraConstants* mappedData = nullptr;
+        cbResource->Map(0, nullptr, reinterpret_cast<void**>(&mappedData));
+        *mappedData = camData;
+        cbResource->Unmap(0, nullptr);
+    
+        cmdList->SetGraphicsRootConstantBufferView(0, cbResource->GetGPUVirtualAddress());
+        mesh->Draw(cmdList);
+    }
+    
     cmdList->SetPipelineState(m_pipelineState.Get());
     cmdList->SetGraphicsRootSignature(m_rootSignature.Get());
     D3D12_CPU_DESCRIPTOR_HANDLE rtvs[3] = {
