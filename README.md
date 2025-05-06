@@ -13,10 +13,6 @@ DirectX12LumenRenderer is a real-time rendering engine prototype built with C++ 
 ##🎆 Application window ##
 ![Models with Ray-Tracing and Lumen lights, first screenshot](DirectX12LumenRenderer/render/screenshots/Lumen.jpg)
 
-## Other screenshots ##
-<img src="DirectX12LumenRenderer/render/screenshots/LumenTwo.png" width="100" height="100"  style="margin-right: 10px;"/>
-<img src="DirectX12LumenRenderer/render/screenshots/LumenOne.png" width="100" height="100" style="margin-right: 10px;" />
-
 
 ## Requirements
 
