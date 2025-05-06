@@ -23,7 +23,7 @@ DirectX12LumenRenderer is a real-time rendering engine prototype built with C++ 
 git clone https://github.com/magyss/DirectX12LumenRenderer.git
 cd DirectX12LumenRenderer
 mkdir build && cd build
-cmake .. -G "Visual Studio 17 2022"
+cmake .. -G "Visual Studio Code"
 cmake --build . --config Release
 ```
 
