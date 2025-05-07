@@ -69,14 +69,12 @@ cbuffer CameraCB : register(b0)
 
 
 float3 TangentSpaceHemisphereSample(float3 N, float2 rand) {
-    // Uniform sampling over hemisphere
     float phi = 2.0 * 3.141592 * rand.x;
     float cosTheta = pow(1.0 - rand.y, 0.5);
     float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
 
     float3 H = float3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
 
-    // Build orthonormal basis
     float3 up = abs(N.z) < 0.999 ? float3(0,0,1) : float3(1,0,0);
     float3 tangent = normalize(cross(up, N));
     float3 bitangent = cross(N, tangent);
