@@ -24,6 +24,10 @@ void GBuffer::Cleanup() {
     m_dsvHeap.Reset();
 }
 
+void NewElement() {
+
+}
+
 void GBuffer::CreateResources(ID3D12Device* device, UINT width, UINT height) {
     m_renderTargets.resize(GBufferCount);
 
