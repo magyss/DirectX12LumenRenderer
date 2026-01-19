@@ -60,7 +60,7 @@ void DX12App::Render() {
 
 
 void DX12App::Update() {
-    // тут будут input/анимации позже
+    
 }
 
 
