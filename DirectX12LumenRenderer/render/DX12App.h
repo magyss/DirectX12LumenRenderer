@@ -21,6 +21,7 @@ protected:
 
     bool InitWindow();
     bool InitDX12();
+    bool InitDXWindow();
 
 protected:
     HINSTANCE m_hInstance;
